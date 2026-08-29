@@ -1,7 +1,6 @@
 const jwt = require("jsonwebtoken");
-const { auth } = require("../config/firebaseAdmin");
 
-const authMiddleware = async (req, res, next) => {
+const authMiddleware = (req, res, next) => {
     try {
         const authHeader = req.headers.authorization;
 
@@ -14,32 +13,16 @@ const authMiddleware = async (req, res, next) => {
 
         const token = authHeader.split(" ")[1];
 
-        // First try Firebase token
-        try {
-            const decodedFirebaseToken = await auth.verifyIdToken(token);
+        const decoded = jwt.verify(
+            token,
+            process.env.JWT_SECRET
+        );
 
-            req.user = {
-                id: decodedFirebaseToken.uid,
-                email: decodedFirebaseToken.email,
-                role: decodedFirebaseToken.role || "student"
-            };
+        req.user = decoded;
 
-            return next();
-        } catch (firebaseError) {
-            // If it's not a Firebase token, try our existing JWT
-            const decoded = jwt.verify(
-                token,
-                process.env.JWT_SECRET
-            );
-
-            req.user = decoded;
-
-            return next();
-        }
+        next();
 
     } catch (error) {
-        console.error("Authentication error:", error);
-
         return res.status(401).json({
             success: false,
             message: "Invalid or expired token"
